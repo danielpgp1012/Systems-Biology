@@ -142,7 +142,7 @@ model=changeRxnBounds(model,cReactions,0,'l'); %set all substrate consumption ra
 end
 %2.3 Display data
 %Bar Graph 
-figure
+fig2=figure;
 f1=subplot(2,1,1);
 bar(c,biomass.genesaerobic)
 title('Aerobic and Anaerobic Essential Genes for Each Substrate')
@@ -203,7 +203,7 @@ sol=optimizeCbModel(model,'max');
 Biomass_vector(i)=sol.obj;
 end
 
-figure
+fig3=figure;
 plot(-UpGlucose,Biomass_vector)
 xlabel('Glucose Uptake [mmol/gDW/h]')
 ylabel('Biomass [mmol/gDW/h]')
@@ -222,7 +222,7 @@ for i=1:length(UpOxygen) %nested for loop looking at biomass output at each gluc
     end
 end
 
-figure
+fig4=figure;
 surfl(UpGlucose,UpOxygen,Objective); %3D plot
 xlabel('Glucose Uptake [mmol/gDW/h]')
 zlabel('Biomass [mmol/gDW/h]')
@@ -267,7 +267,7 @@ for i=1:length(UpSuccinate)
     Biomass_vector_s(i)=sol_s.obj;
 end
 
-figure
+fig5=figure
 plot(-UpSuccinate,Biomass_vector_s)
 xlabel('Succinate Uptake [mmol/gDW/h]')
 ylabel('Biomass [mmol/gDW/h]')
@@ -288,7 +288,7 @@ for i=1:length(UpOxygen) %nested for loop looking at biomass output at each gluc
     end
 end
 
-figure
+fig6=figure;
 surfl(UpSuccinate,UpOxygen,Objective_s); %3D plot
 xlabel('Succinate Uptake [mmol/gDW/h]')
 zlabel('Biomass [mmol/gDW/h]')
@@ -333,7 +333,7 @@ sol_p=optimizeCbModel(model,'max');
 Biomass_vector_p(i)=sol_p.obj;
 end
 
-figure
+fig7=figure;
 plot(-UpPyruvate,Biomass_vector_p)
 xlabel('Pyruvate Uptake [mmol/gDW/h]')
 ylabel('Biomass [mmol/gDW/h]')
@@ -354,7 +354,7 @@ for i=1:length(UpOxygen) %nested for loop looking at biomass output at each gluc
     end
 end
 
-figure
+fig8=fig;
 surfl(UpPyruvate,UpOxygen,Objective_p); %3D plot
 xlabel('Pyruvate Uptake [mmol/gDW/h]')
 zlabel('Biomass [mmol/gDW/h]')
