@@ -319,7 +319,7 @@ model=changeRxnBounds(model,'EX_succ(e)',1000,'u');
 %% PART 4 - Pyruvate
 %4.1
 model=changeRxnBounds(model,cReactions,0,'b'); %set all carbon substrate uptakes to 0
-model=changeRxnBounds(model,cReactions,1000,'u'); %set upper bounds to 1000
+model=changeRxnBounds(model,c
 UpPyruvate=linspace(0,30,40); %Create vector from 0 to 30 of glucose
 model=changeRxnBounds(model,'EX_o2(e)',-20,'b'); %change oxygen max uptake to -20 mmol/gDW/h
 
@@ -340,8 +340,6 @@ ylabel('Biomass [mmol/gDW/h]')
 title('Biomass Production as function of Pyruvate Uptake Rate')
 %%
 %4.2
-model=changeRxnBounds(model,cReactions,0,'b'); %set all carbon substrate uptakes to 0
-model=changeRxnBounds(model,cReactions,1000,'u'); %set upper bounds to 1000
 UpOxygen=linspace(0,30,40); %oxygen vector 
 Objective_p=zeros(length(UpOxygen),length(UpPyruvate)); %initialize biomass matrix 
 
@@ -353,6 +351,7 @@ for i=1:length(UpOxygen) %nested for loop looking at biomass output at each gluc
         Objective_p(i,j)=sol_p.obj;
     end
 end
+mode
 
 figure
 surfl(UpPyruvate,UpOxygen,Objective_p); %3D plot
@@ -366,8 +365,7 @@ ylabel('Oxygen Uptake [mmol/gDW/h]');
 %()
 [growthRates, shadowPrices1, shadowPrices2] = phenotypePhasePlane(model, 'EX_pyr(e)', 'EX_o2(e)',50,30,30);
 %first graph corresponds to glucose
-model=changeRxnBounds(model,cReactions,0,'b'); %set all carbon substrate uptakes to 0
-model=changeRxnBounds(model,cReactions,1000,'u'); %set upper bounds to 1000
+
 %%CSV Table Generation to observe in ESCHER
 
 Pyruvate.values=[14.29, 8.163, 5.306, 0.8163]; %Chose datapoints within specific shadowprices
