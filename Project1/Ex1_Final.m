@@ -354,7 +354,7 @@ for i=1:length(UpOxygen) %nested for loop looking at biomass output at each gluc
     end
 end
 
-fig8=fig;
+fig8=figure;
 surfl(UpPyruvate,UpOxygen,Objective_p); %3D plot
 xlabel('Pyruvate Uptake [mmol/gDW/h]')
 zlabel('Biomass [mmol/gDW/h]')
