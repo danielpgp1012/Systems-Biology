@@ -46,7 +46,7 @@ modelaerobic=model; %initialize aerobic model
 
 modelanaerobic=model; %initialize anaerobic model
 
-modelaerobic=changeRxnBounds(modelaerobic,'EX_o2(e)',-20,'b'); %set oxygen lower boundary uptake to -20mmol/DW/h
+modelaerobic=changeRxnBounds(modelaerobic,'EX_o2(e)',-20,'b'); %constrain oxygen uptake to -20mmol/DW/h
 modelanaerobic=changeRxnBounds(modelanaerobic,'EX_o2(e)',0,'b'); %Set anaerobic conditions
 
 for i=1:length(cReactions) %Change substrate each iteration and set its lower boundary to 10. 
@@ -101,10 +101,9 @@ writetable(T_an, 'anerobic_flux_data.csv');
 %% Part 2
 %2.1
 model=changeRxnBounds(model,cReactions,1000,'u');
-model=changeRxnBounds(model,'EX_o2(e)',1000,'u');
 model=changeRxnBounds(model,cReactions,0.0,'l'); %Set all carbon reactions to 0
 model=changeRxnBounds(model,'EX_glc(e)',-10,'l'); %Set glucose uptake to -10mmol/gDW/h
-model=changeRxnBounds(model,'EX_o2(e)',-20,'l'); %Set oxygen uptake to -20mmol/gDW/h
+model=changeRxnBounds(model,'EX_o2(e)',-20,'b'); %Set oxygen uptake to -20mmol/gDW/h
 cutoff=0.1; %Specify given cutoff of 10% of max biomass with given conditions of glucose
 Tol=FBAsolutionaerobicsave.obj*cutoff; %Tol is set to be the minimum threshold
 [grRatio, grRateKO, grRateWT, hasEffect] = singleGeneDeletion(model); %Compute effect of genes in biomass production
@@ -130,16 +129,18 @@ biomass.genesaerobic(i)=length(essentialGenes); %Store total number of genes in 
 
 %for anaerobic condition we only need to check glucose and fructose
 if ((strcmp(cReactions{i},'EX_glc(e)')) || (strcmp(cReactions{i},'EX_fru(e)'))) 
-model=changeRxnBounds(model,'EX_o2(e)',0,'l');
+model=changeRxnBounds(model,'EX_o2(e)',0,'b');
 [grRatio, grRateKO, grRateWT, hasEffect] = singleGeneDeletion(model); %hasEffect: Boolean
 essentialGenes=model.genes(find(grRateKO<threshold.anaerobic(i)));
 biomass.genesanaerobic(i)=length(essentialGenes);
-model=changeRxnBounds(model,'EX_o2(e)',-20,'l'); %set oxygen consumption rate to -20 again
+model=changeRxnBounds(model,'EX_o2(e)',-20,'b'); %set oxygen consumption rate to -20 again
 end
 
 model=changeRxnBounds(model,cReactions,0,'l'); %set all substrate consumption rates to 0
 
 end
+biomass.genesaerobic(1)=0;
+model=changeRxnBounds(model,'EX_o2(e)',1000,'u');
 %2.3 Display data
 %Bar Graph 
 fig2=figure;
@@ -303,9 +304,9 @@ ylabel('Oxygen Uptake [mmol/gDW/h]');
 
 %%CSV Table Generation to observe in ESCHER
 
-Succinate.values=[14.29, 8.163, 5.306, 0.8163]; %Chose datapoints within specific shadowprices
-Oxygen.values=[9.796,15.1,16.33,14.29]; %Corresponding data points to glucose vector
-Succinate.ShadowPrices=[2, 5, 13, 0]; %Shadow Prices of glucose Values *1e-2
+Succinate.values=[3.673,6.735,15.92,26.94]; %Chose datapoints within specific shadowprices
+Oxygen.values=[22.65,15.31,21.43,26.33]; %Corresponding data points to succinate vector
+Succinate.ShadowPrices=[0.5,8,2,0]; %Shadow Prices of succinate Values *1e-2
 
 %for loop
 for i=1:length(Oxygen.values)
@@ -370,13 +371,13 @@ model=changeRxnBounds(model,cReactions,0,'b'); %set all carbon substrate uptakes
 model=changeRxnBounds(model,cReactions,1000,'u'); %set upper bounds to 1000
 %%CSV Table Generation to observe in ESCHER
 
-Pyruvate.values=[14.29, 8.163, 5.306, 0.8163]; %Chose datapoints within specific shadowprices
-Oxygen.values_p=[9.796,15.1,16.33,14.29]; %Corresponding data points to glucose vector
-Pyruvate.ShadowPrices=[2, 5, 13, 0]; %Shadow Prices of glucose Values *1e-2
+Pyruvate.values=[4.898,18.37,26.33,28.73]; %Chose datapoints within specific shadowprices
+Oxygen.values_p=[23.27,26.94,17.76,6.735]; %Corresponding data points to glucose vector
+Pyruvate.ShadowPrices=[0,6,1.5,0.5]; %Shadow Prices of glucose Values *1e-2
 
 %for loop
 for i=1:length(Oxygen.values)
-    model=changeRxnBounds(model,{'EX_o2(e)','EX_succ(e)'},-[Oxygen.values_p(i),Pyruvate.values(i)],'b');
+    model=changeRxnBounds(model,{'EX_o2(e)','EX_pyr(e)'},-[Oxygen.values_p(i),Pyruvate.values(i)],'b');
     Solution_sp_p=optimizeCbModel(model,'max');
     names=strcat("ShadowPrice_Pyruvate",num2str(Pyruvate.ShadowPrices(i)),".csv"); 
     Table_sp_p=table(model.rxns,Solution_sp_p.full);
