@@ -121,12 +121,9 @@ soltFA = solveTFAmodelCplex(this_tmodel);
 
 %% Perform TVA
 % Get the variables representing the net fluxes
-ssubstrate_names={'NF_DM_glc_e','NF_DM_ac_e','NF_DM_lac-D_e','NF_DM_etoh_e'};
-substrate_indices=getAllVar(this_tmodel,Substrate_names);
-this_tmodel.var_lb(Substrate_indices) = 0;
-for i=1:length(substrate_names)
-    this_tmodel.var_lb(Substrate_indices{i}) = -10;
-    soltFA = solveTFAmodelCplex(this_tmodel);
-    biomass.TFA_aerobic(i)=soltFA.val;
-end
-{'NF_DM_o2_e'}
+NF_ix = getAllVar(this_tmodel,{'NF'});
+Substrate_names={'NF_DM_glc_e','NF_DM_ac_e','NF_DM_lac-D_e','NF_DM_etoh_e'}
+Substrate_indices=ismember(this_tmodel
+tva = runTMinMax(this_tmodel, this_tmodel.varNames(NF_ix));
+this_tmodel.var_lb(id_LC_varNames) = log(C_lb);
+this_tmodel.var_ub(id_LC_varNames) = log(C_ub);
