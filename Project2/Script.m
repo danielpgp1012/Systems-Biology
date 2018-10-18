@@ -10,8 +10,8 @@ if ~cplex_loaded
 end
 
 %% Load the COBRA Toolbox
-%addpath("C:\Users\danie\Documents\GitHub\cobratoolbox")
-%initCobraToolbox
+addpath("C:\Users\danie\Documents\GitHub\cobratoolbox")
+initCobraToolbox
 %%  Load dependencies
 addpath("C:\Users\danie\Documents\EPFL MA1\Fall 1\Principles and Applications of Systems Biology\MATFA\matTFA");
 addpath("C:\Users\danie\Documents\EPFL MA1\Fall 1\Principles and Applications of Systems Biology\MATFA\thermoDatabases");
@@ -21,7 +21,7 @@ addpath("C:\Users\danie\Documents\EPFL MA1\Fall 1\Principles and Applications of
 addpath("C:\Users\danie\Documents\EPFL MA1\Fall 1\Principles and Applications of Systems Biology\MATFA\matTFA\utilities");
 addpath("C:\Users\danie\Documents\EPFL MA1\Fall 1\Principles and Applications of Systems Biology\MATFA\matTFA\sampling");
 addpath("C:\Users\danie\Documents\EPFL MA1\Fall 1\Principles and Applications of Systems Biology\MATFA\matTFA\io");
-addpath("C:\Users\danie\Documents\EPFL MA1\Fall 1\Principles and Applications of Systems Biology\MATFA\ext\Cobra205_vDec2014");
+%addpath("C:\Users\danie\Documents\EPFL MA1\Fall 1\Principles and Applications of Systems Biology\MATFA\ext\Cobra205_vDec2014");
 
 %addpath(genpath(fullfile('..','matTFA')))
 %addpath(genpath(fullfile('..','thermoDatabases')))
@@ -42,48 +42,40 @@ clear tmp
 
 %% FBA
 model_red=changeObjective(model_red,'Ec_biomass_iJO1366_WT_53p95M');
-substrates={'DM_glc_e','DM_lac-D_e','DM_ac_e','DM_etoh_e'};
+substrates.FBA={'DM_glc_e','DM_lac-D_e','DM_ac_e','DM_etoh_e'};
 oxygen={'DM_o2_e'};
 model_red=changeRxnBounds(model_red,oxygen,-1000,'l');
 model_red=changeRxnBounds(model_red,oxygen,1000,'u');
-%Find exchange reactions
-[selExc,selUpt]=findExcRxns(model_red,0); %outputs exchange reactions
 
-uptakes=model_red.rxns(selExc); %selects substrates from exchange reactions
+model_red=changeRxnBounds(model_red,substrates.FBA,0,'l');
+model_red=changeRxnBounds(model_red,substrates.FBA,1000,'u');
 
-substratesModel=extractSubNetwork(model_red,uptakes); %create submodel only
-% with given substrates of substrates
+biomass.FBA_aerobic=zeros(length(substrates.FBA),1);
 
-cReactions=findCarbonRxns(substratesModel,1); %find substrates that contain
-% AT LEAST 1 carbon
-cReactions=cReactions(find(contains(cReactions,'_e')));
-
-%Set all uptakes to 0
-%model_red=changeRxnBounds(model_red,cReactions,0,'l');
-%model_red=changeRxnBounds(model_red,cReactions,1000,'u');
+biomass.TFA_aerobic=zeros(length(substrates.FBA),1);
+biomass.TFA_anaerobic=zeros(length(substrates.FBA),1);
 
 
-biomass.FBA_aerobic=zeros(length(substrates),1);
-
-biomass.TFA_aerobic=zeros(length(substrates),1);
-biomass.TFA_aerobic=zeros(length(substrates),1);
-for i=1:length(substrates)
+for i=1:length(substrates.FBA)
     %aerobic first
-    model_red=changeRxnBounds(model_red,substrates{i},-10,'l');
+    model_red=changeRxnBounds(model_red,substrates.FBA{i},-10,'l');
     solFBA = optimizeCbModel(model_red);
-    biomass.FBA_aerobic(i)=solFBA.obj; %assign objective
-    model_red=changeRxnBounds(model_red,substrates{i},0,'l');
+    biomass.FBA_aerobic(i)=solFBA.f; %assign objective
+    model_red=changeRxnBounds(model_red,substrates.FBA{i},0,'l');
 end
 
 %anaerobic
-biomass.FBA_anaerobic=zeros(length(substrates),1);
+biomass.FBA_anaerobic=zeros(length(substrates.FBA),1);
 model_red=changeRxnBounds(model_red,oxygen,0,'l'); 
-for i=1:length(substrates)
+for i=1:length(substrates.FBA)
     %aerobic first
-    model_red=changeRxnBounds(model_red,substrates{i},-10,'l');
+    model_red=changeRxnBounds(model_red,substrates.FBA{i},-10,'l');
     solFBA = optimizeCbModel(model_red);
-    biomass.FBA_anaerobic(i)=solFBA.obj; %assign objective
+    biomass.FBA_anaerobic(i)=solFBA.f; %assign objective
+    model_red=changeRxnBounds(model_red,substrates.FBA{i},0,'l');
 end
+model_red=changeRxnBounds(model_red,oxygen,-1000,'l');
+model_red=changeRxnBounds(model_red,substrates.FBA,-1000,'l');
 
 %% TFA
 %Check for blocked reactions
@@ -121,12 +113,81 @@ soltFA = solveTFAmodelCplex(this_tmodel);
 
 %% Perform TVA
 % Get the variables representing the net fluxes
-ssubstrate_names={'NF_DM_glc_e','NF_DM_ac_e','NF_DM_lac-D_e','NF_DM_etoh_e'};
-substrate_indices=getAllVar(this_tmodel,Substrate_names);
-this_tmodel.var_lb(Substrate_indices) = 0;
-for i=1:length(substrate_names)
-    this_tmodel.var_lb(Substrate_indices{i}) = -10;
+substrates_TFA={'NF_DM_glc_e';'NF_DM_lac-D_e';'NF_DM_ac_e';'NF_DM_etoh_e'};
+substrate_indices=find_cell(substrates_TFA,this_tmodel.varNames);
+this_tmodel.var_lb(substrate_indices) = 0;
+
+%Change oxygen boundary
+oxygen_name={'NF_DM_o2_e'};
+oxygen_index=find_cell(oxygen_name,this_tmodel.varNames);
+this_tmodel.var_lb(oxygen_index) = -1000;
+%aerobic conditions
+for i=1:length(substrates_TFA)
+    this_tmodel.var_lb(substrate_indices(i)) = -10;
     soltFA = solveTFAmodelCplex(this_tmodel);
     biomass.TFA_aerobic(i)=soltFA.val;
+    this_tmodel.var_lb(substrate_indices(i)) = 0;
 end
-{'NF_DM_o2_e'}
+
+%anaerobic conditions
+this_tmodel.var_lb(oxygen_index) = 0;
+
+for i=1:length(substrates_TFA)
+    this_tmodel.var_lb(substrate_indices(i)) = -10;
+    soltFA = solveTFAmodelCplex(this_tmodel);
+    biomass.TFA_anaerobic(i)=soltFA.val;
+    this_tmodel.var_lb(substrate_indices(i)) = 0;
+end
+
+%% Generate Comparison Table
+T1=table(substrates_TFA,round(biomass.FBA_aerobic,3),round(biomass.FBA_anaerobic,3),round(biomass.TFA_aerobic,3),round(biomass.TFA_anaerobic,3)); %yield is normalized to consumption
+T1.Properties.VariableNames = {'Substrates' 'FBA_Aerobic_Yield' 'FBA_Anaerobic_Yield' 'TFA_Aerobic_Yield' 'TFA_Anaerobic_Yield'}
+%We see that the solutions are close enough
+
+%% 2 
+load('metabolomics.mat') %cell containing: 1: LC_IDs, 2:Names 3: Concentrations 4: Standard Deviations (50% for those not defined)
+IDs=metabolomics{1};
+metabolite_names=metabolomics{2};
+concentrations=metabolomics{3};
+std_dev_concentrations=metabolomics{4};
+metabolomics_indices=find_cell(IDs,this_tmodel.varNames); %Find indices in model that correspond to metabolomics
+indices_inmetabolomics=ismember(IDs,this_tmodel.varNames); %1 if metabolomic is in model and 0 if it is not
+%Changes bounds of concentrations of metabolomics that are in the model
+this_tmodel.var_lb(metabolomics_indices) = log(concentrations(indices_inmetabolomics)-std_dev_concentrations(indices_inmetabolomics));
+this_tmodel.var_ub(metabolomics_indices) = log(concentrations(indices_inmetabolomics)+std_dev_concentrations(indices_inmetabolomics));
+%set substrate uptake to 0
+this_tmodel.var_lb(substrate_indices) = 0;
+
+%Change oxygen boundary
+oxygen_name={'NF_DM_o2_e'};
+oxygen_index=find_cell(oxygen_name,this_tmodel.varNames);
+this_tmodel.var_lb(oxygen_index) = -1000;
+%aerobic conditions
+biomass.TFA_aerobic_2=zeros(length(substrates_TFA));
+biomass.TFA_anaerobic_2=zeros(length(substrates_TFA));
+for i=1:length(substrates_TFA)
+    this_tmodel.var_lb(substrate_indices(i)) = -10;
+    soltFA = solveTFAmodelCplex(this_tmodel);
+    biomass.TFA_aerobic2(i)=soltFA.val;
+    this_tmodel.var_lb(substrate_indices(i)) = 0;
+end
+
+%anaerobic conditions
+this_tmodel.var_lb(oxygen_index) = 0;
+
+for i=1:length(substrates_TFA)
+    this_tmodel.var_lb(substrate_indices(i)) = -10;
+    soltFA = solveTFAmodelCplex(this_tmodel);
+    biomass.TFA_anaerobic2(i)=soltFA.val;
+    this_tmodel.var_lb(substrate_indices(i)) = 0;
+end
+%% Table 2
+T2=table(substrates_TFA,round(biomass.FBA_aerobic,3),round(biomass.FBA_anaerobic,3),transpose(round(biomass.TFA_aerobic2,3)),transpose(round(biomass.TFA_anaerobic2,3))); %yield is normalized to consumption
+T2.Properties.VariableNames = {'Substrates' 'FBA_Aerobic_Yield' 'FBA_Anaerobic_Yield' 'TFA_Aerobic_Yield' 'TFA_Anaerobic_Yield'}
+
+%% Table 3
+%metabolomics used in model
+fprintf("The metabolites used in the model are the following:\n");
+metabolite_names(indices_inmetabolomics)
+fprintf("The metabolites not used in the model are:\n");
+metabolite_names(~(indices_inmetabolomics))
