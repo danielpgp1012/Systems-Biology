@@ -108,6 +108,12 @@ this_tmodel = addNetFluxVariables(tmp); %We split every reaction into forward an
 %C - Continuous: can be any real value
 %B - Can only be binary
 %
+%% save model
+save this_tmodel
+%% Load model
+%Start here
+load this_tmodel
+
 %% Solve tFA
 soltFA = solveTFAmodelCplex(this_tmodel);
 
@@ -191,3 +197,5 @@ fprintf("The metabolites used in the model are the following:\n");
 metabolite_names(indices_inmetabolomics)
 fprintf("The metabolites not used in the model are:\n");
 metabolite_names(~(indices_inmetabolomics))
+
+%% Question 3
