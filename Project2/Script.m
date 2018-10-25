@@ -158,9 +158,13 @@ concentrations=metabolomics{3};
 std_dev_concentrations=metabolomics{4};
 metabolomics_indices=find_cell(IDs,this_tmodel.varNames); %Find indices in model that correspond to metabolomics
 indices_inmetabolomics=ismember(IDs,this_tmodel.varNames); %1 if metabolomic is in model and 0 if it is not
+indices_inmetabolomics_lb=ismember(indices_inmetabolomics,indices_inmetabolomics(concentrations<=std_dev_concentrations));
+metabolomics_indices_lb=find_cell(IDs(indices_inmetabolomics_lb),this_tmodel.varNames);
 %Changes bounds of concentrations of metabolomics that are in the model
-this_tmodel.var_lb(metabolomics_indices) = log(concentrations(indices_inmetabolomics)-std_dev_concentrations(indices_inmetabolomics));
 this_tmodel.var_ub(metabolomics_indices) = log(concentrations(indices_inmetabolomics)+std_dev_concentrations(indices_inmetabolomics));
+
+this_tmodel.var_lb(metabolomics_indices_lb) = log(concentrations(indices_inmetabolomics_lb)-std_dev_concentrations(indices_inmetabolomics_lb));
+
 %set substrate uptake to 0
 this_tmodel.var_lb(substrate_indices) = 0;
 
@@ -169,8 +173,8 @@ oxygen_name={'NF_DM_o2_e'};
 oxygen_index=find_cell(oxygen_name,this_tmodel.varNames);
 this_tmodel.var_lb(oxygen_index) = -1000;
 %aerobic conditions
-biomass.TFA_aerobic_2=zeros(length(substrates_TFA));
-biomass.TFA_anaerobic_2=zeros(length(substrates_TFA));
+biomass.TFA_aerobic_2=zeros(length(substrates_TFA),1);
+biomass.TFA_anaerobic_2=zeros(length(substrates_TFA),1);
 for i=1:length(substrates_TFA)
     this_tmodel.var_lb(substrate_indices(i)) = -10;
     soltFA = solveTFAmodelCplex(this_tmodel);
@@ -199,3 +203,4 @@ fprintf("The metabolites not used in the model are:\n");
 metabolite_names(~(indices_inmetabolomics))
 
 %% Question 3
+indices_metabolites=find(ismember(this_tmodel,'NF'))
