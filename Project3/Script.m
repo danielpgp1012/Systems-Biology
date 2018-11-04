@@ -45,6 +45,7 @@ t_span=[0, 500];
 %Solve System
 [t,C.ccs] = ode15s(@(t,C) ODEq2(t,C,vmax,kcat,Km,ka,ki),t_span,C0.ccs);
 %% Figure
+figure
 plot(t,C.ccs)
 legend(C.Names)
 xlabel('time (s)')
