@@ -1,4 +1,4 @@
-function [dCdt] = ODEq2(t,C,vmax,kcat,Km,ka,ki,v1)
+function [dCdt] = ODEq2(t,C,vmax,kcat,Km,ka,ki)
 %ODEq1 returns time derivative of all components in system
 %   
 %initialization of rates
@@ -14,12 +14,9 @@ MAPK=C(6);
 MAPK_P=C(7);
 MAPK_PP=C(8);
 
-if (nargin<8)
-    v(1)=vmax(1)*MAPKKK*(1+ka*(MAPK_PP))/((Km(1)+MAPKKK)*(1+ki*MAPK_PP));
-else
-    v(1)=v1*(1+ka*(MAPK_PP))/(1+ki*MAPK_PP);
-end
-v(2) = vmax(2)*MAPKKK_P/(Km(2)+MAPKK_P);
+v(1)=vmax(1)*MAPKKK*(1+ka*(MAPK_PP))/((Km(1)+MAPKKK)*(1+ki*MAPK_PP));
+
+v(2) = vmax(2)*MAPKKK_P/(Km(2)+MAPKKK_P);
 v(3) = kcat(3)*MAPKKK_P*MAPKK/(Km(3)+MAPKK);
 v(4) = kcat(4)*MAPKKK_P*MAPKK_P/(Km(4)+MAPKK_P);
 v(5) = vmax(5)*MAPKK_PP/(Km(5)+MAPKK_PP);
