@@ -1,7 +1,7 @@
-function obj = objfun(x)
-%Objective Function Returns biomass over sum of fluxes
+function g = objGradient(x)
+%UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
-%%
+%% 
 indeces_enzymes = [  96
     97
     98
@@ -660,9 +660,14 @@ indeces_enzymes = [  96
    868
    884
    889];
-%%
-
-obj=- x(17)/sum(x(indeces_enzymes).^2);
-%obj = -x(17);
+%
+%% 
+den = sum(x.^2)^2;
+M = zeros (length(x));
+M(indeces_enzymes,indeces_enzymes) = 2*x(17)/den;
+M(17,17) = - 1/den;
+M = diag(diag(M));
+g = M*x;
+g(17) = - 1/den;
 end
 
