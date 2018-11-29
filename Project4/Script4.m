@@ -96,6 +96,16 @@ end
 ylabel('Concentration [nM]')
 xlabel('Time (s)')
 
+%% c zoomed in
+figure
+for i=1:No_repetitions
+stairs(time{i},X{i}*1e9)
+hold on 
+end
+ylabel('Concentration [nM]')
+xlabel('Time (s)')
+xlim([0 2])
+
 %% d
 time_plot=linspace(0,2); %plot until steady state is reached
 X_A=zeros(length(time_plot),No_repetitions);
