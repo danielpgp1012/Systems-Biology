@@ -135,13 +135,18 @@ end
 %% Conopt Solver Setup
 %x_0 = x0(:,40);
 %HessPattern = zeros(size(x,1));
+acetate_idx=25;
+C_L = 0;
+C_U = 1;
+
 model_NL=changeRxnBounds(model_NL,glycerol_rxn,0,'b');
 x_0 = x0(:,30);
+model_NL.lb(25) = -1000;
 NLP = conAssign('objfun', 'objGradient', [], [], model_NL.lb, model_NL.ub, 'NLP', x_0,0, [], ...
-                           model_NL.A, model_NL.b, model_NL.b);
+                           model_NL.A, model_NL.b, model_NL.b,'glycerol_constrain',[],[],[],C_L,C_U);
 
 glycerol_index = find(ismember(model_NL.rxns,glycerol_rxn));
-uptake_flux=linspace(5,60);
+uptake_flux=linspace(0,60);
 biomass_NL3=zeros(length(uptake_flux),1);
 
 
@@ -153,6 +158,34 @@ for i=1:length(uptake_flux)
     biomass_NL3(i)=solConopt.x_k(17);
     NLP.x_0 = solConopt.x_k;
 end
+
+%% Second NL Function
+
+%% Glycerol constraint
+
+
+
+%% minimize atp requirement
+atp_index = 1;
+NLP = conAssign('objfun_2', 'objGradient_2', [], [], model_NL.lb, model_NL.ub, 'NLP', x_0,0, [], ...
+                           model_NL.A, model_NL.b, model_NL.b,'glycerol_constrain',[],[],[],C_L,C_U);
+NLP.x_L(1) = 5;
+NLP.x_U(1) = 5;
+
+uptake_flux=linspace(0,60);
+biomass_NL4=zeros(length(uptake_flux),1);
+
+
+for i=1:length(uptake_flux)
+   
+    NLP.x_L(glycerol_index) = -uptake_flux(i);
+    NLP.x_U(glycerol_index) = -uptake_flux(i);
+    solConopt = tomRun('conopt',NLP,1);
+    biomass_NL4(i)=solConopt.x_k(17);
+    NLP.x_0 = solConopt.x_k;
+end
+
+%%
 %% Comparison plot
 uptake_flux_NL=linspace(0,60,30);
 uptake_flux=linspace(0,60);
@@ -160,7 +193,8 @@ uptake_flux_NL2 = linspace(5,60);
 
 figure
 plot(uptake_flux,biomass,uptake_flux,biomass2,...
-    uptake_flux_NL2,biomass_NL3);
-legend('Max Biomass','Max Biomass no H_2','Max Biomass/sum(v_i^2)}')
+    uptake_flux_NL2,biomass_NL3,...
+    uptake_flux_NL2,biomass_NL4);
+legend('Max Biomass','Max Biomass no H_2','Max Biomass/sum(v_i^2)}','Max Biomass/(w*sum(vi^2)+(1-w)v1)')
 ylabel('Growth rate (h^{-1})')
 xlabel('Glycerol Uptake flux mmol/gDWh')

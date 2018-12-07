@@ -1,0 +1,7 @@
+function f = glycerol_constrain(x)
+%UNTITLED Summary of this function goes here
+%   Detailed explanation goes here
+flux = abs(x(25));
+f = 1-abs(flux/((11.5*0.158*exp(-0.0859*flux))/(11.5+0.158*(exp(-0.0859*flux)-1))));
+end
+
