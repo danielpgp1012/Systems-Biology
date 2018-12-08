@@ -1,4 +1,4 @@
-function g = objGradient(x)
+function g_relaxed = objGradient(x)
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
 %% 
@@ -669,6 +669,7 @@ M(17,17) = - 1/den;
 M = diag(diag(M));
 g = M*x;
 g(17) = - 1/sqrt(den);
+g_relaxed = 1.05*g;
 %g = zeros(length(x),1);
 %g(17) = -1;
 end

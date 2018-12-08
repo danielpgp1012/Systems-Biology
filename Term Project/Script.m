@@ -12,6 +12,7 @@ load ('iCbu641.mat');
 %% Change objective
 model=changeObjective(model,'Biomass',1);
 
+
 %% Test biomass at given glycerol uptake
 %[selExc,selUpt]=findExcRxns(model,0); %outputs exchange reactions
 
@@ -33,21 +34,32 @@ model=changeRxnBounds(model,glycerol_rxn,-10,'l');
 solFBA=optimizeCbModel(model);
 
 %% for loop to plot curv
-uptake_flux=linspace(0,60);
-biomass=zeros(length(uptake_flux),1);
+uptake_flux=linspace(0,100);
+biomass_LP=zeros(length(uptake_flux),1);
+PDO_LP = biomass_LP;
 x0=zeros(length(model.rxns),length(uptake_flux));
+PDO_idx = find(ismember(model.rxnNames,'Propane-1,3-diol exchange '));
 for i=1:length(uptake_flux)
     model=changeRxnBounds(model,glycerol_rxn,-uptake_flux(i),'l');
     solFBA=optimizeCbModel(model);
-    biomass(i)=solFBA.f;
+    biomass_LP(i)=solFBA.f;
+    PDO_LP(i) = solFBA.full(PDO_idx);
     x0(:,i)=solFBA.full;
 end
-
+%% Plot LP
 figure 
-plot (uptake_flux,biomass)
+subplot(1,2,1)
+plot(uptake_flux,biomass_LP)
+xlim([0 100])
+xticks(0:20:100)
 ylabel('Growth rate (h^{-1})')
 xlabel('Glycerol Uptake flux mmol/gDWh')
-
+ylim([0 1.2])
+subplot(1,2,2)
+plot (uptake_flux,PDO_LP)
+ylabel('PDO flux mmol/gDWh')
+xlabel('Glycerol Uptake flux mmol/gDWh')
+xticks(0:20:100)
 %% block formic and hydrogen production
 
 BlockRxnNames={'Hydrogen exchange ','Formate exchange '};
@@ -56,21 +68,22 @@ BlockRxnCodes=model.rxns(BlockRxnIndices);
  model=changeRxnBounds(model,BlockRxnCodes,0,'u');
  
 
-biomass2=zeros(length(uptake_flux),1);
-x0=zeros(length(model.rxns),length(uptake_flux));
+biomass_LP2=zeros(length(uptake_flux),1);
+PDO_LP2 = biomass_LP2;
 for i=1:length(uptake_flux)
     model=changeRxnBounds(model,glycerol_rxn,-uptake_flux(i),'l');
     solFBA=optimizeCbModel(model);
-    biomass2(i)=solFBA.f;
-    x0(:,i)=solFBA.full;
+    biomass_LP2(i)=solFBA.f;
+    PDO_LP2(i) = solFBA.full(PDO_idx);
 end
 
-figure 
-plot (uptake_flux,biomass2)
+%% Plot H2 and formic acid block
+figure
+plot (uptake_flux,biomass_LP2)
 ylabel('Growth rate (h^{-1})')
 xlabel('Glycerol Uptake flux mmol/gDWh')
  
-%% fix biomass and find 
+%% Load NL model
 load ('model_NL.mat')
 %% Find Enzyme Reactions
 T=strfind(model_NL.rxnNames,'ase');
@@ -86,115 +99,97 @@ indeces_enzymes(k:end)=[];
 model_NL.enzyme_rxn=indeces_enzymes;
 model_NL.objFunction='x(17)/sum(x(NLPproblem.enzyme_rxn).^2)';
 model_NL.b=zeros(701,1);
-%%
-
-uptake_flux=linspace(0,60,30);
-model_NL=changeRxnBounds(model_NL,cReactions,0,'l'); %change boundaries
-biomass_NL=zeros(length(uptake_flux),1);
-%model_NL.x0=ones(891,1)*0.5;
-model_NL.objFunction='x(17)';
- model_NL.x0=x0(:,50);
- model_NL=changeObjective(model_NL,'Biomass',1);
-for i=1:length(uptake_flux)
-   
-    %model_NL=changeRxnBounds(model_NL,glycerol_rxn,-uptake_flux(i),'b');
-    model_NL=changeRxnBounds(model_NL,glycerol_rxn,-20,'b');
-    solFBA=solveCobraNLP(model_NL,'MaxFunctionEvaluations',10e4,'OptimalityTolerance',1e-4);
-    biomass_NL(i)=solFBA.full(17);
-    model_NL.x0=solFBA.full;
-end
-
-
-%% 
-figure 
-plot (uptake_flux_NL,biomass_NL)
-ylabel('Growth rate (h^{-1})')
-xlabel('Glycerol Uptake flux mmol/gDWh')
-
-
-%% Minimize ATP  production as well
-model_NL.w=0.04; %weight factor that correlates with experimental results
-model_NL.objFunction='x(17)/((1-NLPproblem.w)*x(1)^2+NLPproblem.w*sum(x(NLPproblem.enzyme_rxn).^2))';
-
-uptake_flux=linspace(0,60,30);
-model_NL=changeRxnBounds(model_NL,cReactions,0,'l'); %change boundaries
-biomass_NL2=zeros(length(uptake_flux),1);
-%model_NL.x0=ones(891,1)*0.5;
- model_NL.x0=x0(:,30);
- model_NL=changeObjective(model_NL,'Biomass',1);
-for i=1:length(uptake_flux)
-   
-    model_NL=changeRxnBounds(model_NL,glycerol_rxn,-uptake_flux(i),'b');
-    solFBA=solveCobraNLP(model_NL,'MaxFunctionEvaluations',3e4,'OptimalityTolerance',1e-3);
-    biomass_NL2(i)=solFBA.full(17);
-    model_NL.x0=solFBA.full;
-end
 
 
 
 %% Conopt Solver Setup
-%x_0 = x0(:,40);
-%HessPattern = zeros(size(x,1));
-acetate_idx=25;
-C_L = 0;
-C_U = 1;
 
+acetate_idx=find(ismember(model_NL.rxnNames,'Acetate exchange '));
+
+C_L = -100;
+C_U = 0;
+model_NL.lb(acetate_idx)= 0;
 model_NL=changeRxnBounds(model_NL,glycerol_rxn,0,'b');
 x_0 = x0(:,30);
-model_NL.lb(25) = -1000;
 NLP = conAssign('objfun', 'objGradient', [], [], model_NL.lb, model_NL.ub, 'NLP', x_0,0, [], ...
-                           model_NL.A, model_NL.b, model_NL.b,'glycerol_constrain',[],[],[],C_L,C_U);
+                           model_NL.A, model_NL.b, model_NL.b,'acetate_constrain',[],[],[],C_L,C_U);
 
 glycerol_index = find(ismember(model_NL.rxns,glycerol_rxn));
-uptake_flux=linspace(0,60);
-biomass_NL3=zeros(length(uptake_flux),1);
+uptake_flux=linspace(0,90);
+biomass_NL1=zeros(length(uptake_flux),1);
+PDO_NL1 = biomass_NL1;
+x0=x0*0;
 
-
+%% For loop
 for i=1:length(uptake_flux)
    
     NLP.x_L(glycerol_index) = -uptake_flux(i);
     NLP.x_U(glycerol_index) = -uptake_flux(i);
     solConopt = tomRun('conopt',NLP,1);
-    biomass_NL3(i)=solConopt.x_k(17);
+    biomass_NL1(i)=solConopt.x_k(17);
+    PDO_NL1(i) = solConopt.x_k(PDO_idx);
     NLP.x_0 = solConopt.x_k;
+    x0(:,i) = solConopt.x_k;
 end
-
+clear NLP;
 %% Second NL Function
 
-%% Glycerol constraint
+
 
 
 
 %% minimize atp requirement
-atp_index = 1;
-NLP = conAssign('objfun_2', 'objGradient_2', [], [], model_NL.lb, model_NL.ub, 'NLP', x_0,0, [], ...
-                           model_NL.A, model_NL.b, model_NL.b,'glycerol_constrain',[],[],[],C_L,C_U);
-NLP.x_L(1) = 5;
-NLP.x_U(1) = 5;
+if ~isempty(NLP)
+   clear NLP 
+end
+ATP_idx = find(model_NL.A(1,:)==1);
+% NLP = conAssign('objfun_2', 'objGradient_2', [], [], model_NL.lb, model_NL.ub, 'NLP', x_0,0, [], ...
+%                            model_NL.A, model_NL.b, model_NL.b,'acetate_constrain',[],[],[],C_L,C_U);
+ NLP = conAssign('objfun_2', 'objGradient_2', [], [], model_NL.lb, model_NL.ub, 'NLP', x_0,0, [], ...
+                            model_NL.A, model_NL.b, model_NL.b);
 
-uptake_flux=linspace(0,60);
-biomass_NL4=zeros(length(uptake_flux),1);
 
 
-for i=1:length(uptake_flux)
+
+uptake_flux_NL2=linspace(0,90);
+biomass_NL2=zeros(length(uptake_flux_NL2),1);
+PDO_NL2 = biomass_NL2; 
+
+for i=1:length(uptake_flux_NL2)
    
-    NLP.x_L(glycerol_index) = -uptake_flux(i);
-    NLP.x_U(glycerol_index) = -uptake_flux(i);
+    NLP.x_L(glycerol_index) = -uptake_flux_NL2(i);
+    NLP.x_U(glycerol_index) = -uptake_flux_NL2(i);
     solConopt = tomRun('conopt',NLP,1);
-    biomass_NL4(i)=solConopt.x_k(17);
+    biomass_NL2(i)=solConopt.x_k(17);
+    PDO_NL2(i) = solConopt.x_k(PDO_idx);
     NLP.x_0 = solConopt.x_k;
+    %NLP.x_0 = x0(i);
 end
 
 %%
 %% Comparison plot
-uptake_flux_NL=linspace(0,60,30);
-uptake_flux=linspace(0,60);
-uptake_flux_NL2 = linspace(5,60);
+uptake_flux=linspace(0,100);
 
-figure
-plot(uptake_flux,biomass,uptake_flux,biomass2,...
-    uptake_flux_NL2,biomass_NL3,...
-    uptake_flux_NL2,biomass_NL4);
-legend('Max Biomass','Max Biomass no H_2','Max Biomass/sum(v_i^2)}','Max Biomass/(w*sum(vi^2)+(1-w)v1)')
+
+figure 
+subplot(1,2,1)
+
+plot(uptake_flux,biomass_LP,'b',uptake_flux,biomass_LP2,'c',...
+    uptake_flux_NL2,biomass_NL1,'r',...
+    uptake_flux_NL2,biomass_NL2,'g');
+leg=legend('$\mu$','$\mu\,no\,H_2$','$\frac{Max\,Biomass}{\sum(v_i^2)}$','$\frac{Max\,Biomass}{(w*\sum(vi^2)+(1-w)v_{ATP})}$');
+set(leg,'Interpreter','latex');
 ylabel('Growth rate (h^{-1})')
 xlabel('Glycerol Uptake flux mmol/gDWh')
+ylim([0 1.2])
+xlim([0 100])
+xticks(0:20:100)
+subplot(1,2,2)
+plot(uptake_flux,PDO_LP,'b',uptake_flux,PDO_LP2,'c',...
+uptake_flux_NL2,PDO_NL1,'r',uptake_flux_NL2,PDO_NL2,'g')
+ylabel('PDO flux mmol/gDWh')
+xlabel('Glycerol Uptake flux mmol/gDWh')
+xticks(0:20:100)
+ylim([-2 70])
+
+

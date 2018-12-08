@@ -1,7 +1,7 @@
-function obj = objfun_2(x)
+function obj_relaxed = objfun_2(x,Prob)
 %Objective Function Returns biomass over sum of fluxes
 %   Detailed explanation goes here
-%%
+%% Enzyme Indeces
 indeces_enzymes = [  96
     97
     98
@@ -660,10 +660,14 @@ indeces_enzymes = [  96
    868
    884
    889];
-%%
+%% ATP Indeces
+ATP_indices = find(transpose(Prob.A(1,:)).*x>0);
+%ATP_indices = find((Prob.A(1,:)>0));
+ATP_gen = Prob.A(1,ATP_indices)*x(ATP_indices);
+%% OBj Function
 w = 0.04;
-ATP_flux = sum(x(3:5) - x(2) - x(1));
-obj = - x(17)/(w*sum(x(indeces_enzymes).^2)+(1-w)*ATP_flux^2);
 
+obj=- x(17)/(w*sum(x(indeces_enzymes).^2)+(1-w)*ATP_gen^2);
+obj_relaxed = 1.05*obj;
 end
 

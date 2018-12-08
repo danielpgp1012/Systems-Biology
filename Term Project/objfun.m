@@ -1,4 +1,4 @@
-function obj = objfun(x)
+function obj_relaxed = objfun(x)
 %Objective Function Returns biomass over sum of fluxes
 %   Detailed explanation goes here
 %%
@@ -663,6 +663,7 @@ indeces_enzymes = [  96
 %%
 
 obj=- x(17)/sum(x(indeces_enzymes).^2);
+obj_relaxed = 1.05*obj;
 %obj = -x(17);
 end
 

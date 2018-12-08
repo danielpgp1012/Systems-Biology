@@ -1,4 +1,4 @@
-function g = objGradient_2(x)
+function g_relaxed = objGradient_2(x,Prob)
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
 %% 
@@ -661,16 +661,20 @@ indeces_enzymes = [  96
    884
    889];
 %
-%% 
+
+%% ATP Indeces
+ATP_indices = find(transpose(Prob.A(1,:)).*x>0);
+%ATP_indices = find((Prob.A(1,:)>0));
+ATP_gen = Prob.A(1,ATP_indices)*x(ATP_indices);
+%%
 w = 0.04;
-mu = x(17);
-ATP_flux = sum(x(3:5) - x(2) - x(1));
-den = w * sum(x(indeces_enzymes).^2) + (1-w) * (ATP_flux)^2;
+den = w*(sum(x(indeces_enzymes).^2))+(1-w)*ATP_gen^2;
 g = zeros (length(x),1);
-g(indeces_enzymes) = 2*w*mu*x(indeces_enzymes)/den^2;
-g(17) = - 1/(den);
-g(3:5) = (1-w)*mu*2*(ATP_flux)/den^2;
-g(2) = - (1-w)*mu*2*(ATP_flux)/den^2;
+g(indeces_enzymes) = w*2*x(17)*x(indeces_enzymes)/den^2;
+g(17) = - 1/den;
+g(ATP_indices) =g(ATP_indices) + transpose(Prob.A(1,ATP_indices)).*(1-w)*2*x(17)*ATP_gen/den^2;
+
+g_relaxed = 1.05*g;
 
 end
 
