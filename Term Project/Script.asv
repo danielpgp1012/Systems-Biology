@@ -191,11 +191,6 @@ xticks(0:20:100)
 ylim([-2 70])
 
 %% Second Graph
-if (~isempty(NLP))
-    clear NLP;
-end
-NLP = conAssign('objfun_2', 'objGradient_2', [], [], model_NL.lb, model_NL.ub, 'NLP', x_0,0, [], ...
-                            model_NL.A, model_NL.b, model_NL.b);
 
 glucose_uptake = linspace(0,14,25);
 glycerol_uptake = linspace(0,40,25);
@@ -204,13 +199,13 @@ glucose_index = find(ismember(model_NL.rxnNames,'D-Glucose exchange'));
 
 yield_PDO = zeros(length(glucose_uptake),length(glycerol_uptake));
 oxygen_index = find(ismember(model_NL.rxnNames,'Oxygen exchange'));
-NLP.x_L(oxygen_index) = -1e3;
+NLP.x_L(oxygen_index) = 0;
 NLP.x_U(oxygen_index) = 0;
 
 for i=1:length(glucose_uptake)
    NLP.x_L(glucose_index) = -glucose_uptake(i);
    NLP.x_U(glucose_index) = -glucose_uptake(i);
-   
+   NLP.x_0 = x0(:,10);
     for j = 1:length(glycerol_uptake)
         NLP.x_L(glycerol_index) = -glycerol_uptake(j);
         NLP.x_U(glycerol_index) = -glycerol_uptake(j);
@@ -220,10 +215,8 @@ for i=1:length(glucose_uptake)
             solConopt = tomRun('conopt',NLP,1);
             yield_PDO(i,j) = solConopt.x_k(PDO_idx)/(glycerol_uptake(j)+glucose_uptake(i));
             yield_PDO(1,1)=0;
-            if (~contains(solConopt.ExitText,'Infeasible'))
+            if solConopt.
             NLP.x_0 = solConopt.x_k;
-            end
-           
         end
         
     end
@@ -233,11 +226,7 @@ end
 %% Plot
 [GLC,GLY] = meshgrid(glucose_uptake,glycerol_uptake);
 
-surf(GLY,GLC,transpose(yield_PDO))
-title('Co-Fermentation yield of PDO')
-ylabel('Glucose Uptake Flux (mmol/gDW h)')
-xlabel('Glycerol Uptake Flux (mmol/gDW h)')
-zlabel({'$Y_(PDO/S)$'},'Interpreter','latex')
+surf(GLC,GLY,transpose(yield_PDO))
 
 
 
