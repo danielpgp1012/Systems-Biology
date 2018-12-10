@@ -97,7 +97,6 @@ for i=1:length(T)
 end
 indeces_enzymes(k:end)=[];
 model_NL.enzyme_rxn=indeces_enzymes;
-model_NL.objFunction='x(17)/sum(x(NLPproblem.enzyme_rxn).^2)';
 model_NL.b=zeros(701,1);
 
 
@@ -139,9 +138,7 @@ clear NLP;
 
 
 %% minimize atp requirement
-if ~isempty(NLP)
-   clear NLP 
-end
+
 ATP_idx = find(model_NL.A(1,:)==1);
 % NLP = conAssign('objfun_2', 'objGradient_2', [], [], model_NL.lb, model_NL.ub, 'NLP', x_0,0, [], ...
 %                            model_NL.A, model_NL.b, model_NL.b,'acetate_constrain',[],[],[],C_L,C_U);
@@ -189,6 +186,11 @@ ylabel('PDO flux mmol/gDWh')
 xlabel('Glycerol Uptake flux mmol/gDWh')
 xticks(0:20:100)
 ylim([-2 70])
+%%
+figure 
+plot (uptake_flux(2:end),transpose(PDO_NL2(2:end))./uptake_flux(2:end))
+xlabel('Uptake flux Glycerol')
+ylabel({'Y_{PDO/S}'},'Interpreter','latex')
 
 %% Second Graph
 if (~isempty(NLP))
@@ -196,7 +198,12 @@ if (~isempty(NLP))
 end
 NLP = conAssign('objfun_2', 'objGradient_2', [], [], model_NL.lb, model_NL.ub, 'NLP', x_0,0, [], ...
                             model_NL.A, model_NL.b, model_NL.b);
+%NLP = conAssign('objfun', 'objGradient', [], [], model_NL.lb, model_NL.ub, 'NLP', x_0,0, [], ...
+%                           model_NL.A, model_NL.b, model_NL.b,'acetate_constrain',[],[],[],C_L,C_U);
+%NLP = conAssign('objfun', 'objGradient', [], [], model_NL.lb, model_NL.ub, 'NLP', x_0,0, [], ...
+%                           model_NL.A, model_NL.b, model_NL.b);
 
+                       
 glucose_uptake = linspace(0,14,25);
 glycerol_uptake = linspace(0,40,25);
 
@@ -204,12 +211,14 @@ glucose_index = find(ismember(model_NL.rxnNames,'D-Glucose exchange'));
 
 yield_PDO = zeros(length(glucose_uptake),length(glycerol_uptake));
 oxygen_index = find(ismember(model_NL.rxnNames,'Oxygen exchange'));
-NLP.x_L(oxygen_index) = -1e3;
+NLP.x_L(oxygen_index) = 0;
 NLP.x_U(oxygen_index) = 0;
+
 
 for i=1:length(glucose_uptake)
    NLP.x_L(glucose_index) = -glucose_uptake(i);
    NLP.x_U(glucose_index) = -glucose_uptake(i);
+
    
     for j = 1:length(glycerol_uptake)
         NLP.x_L(glycerol_index) = -glycerol_uptake(j);
@@ -217,8 +226,10 @@ for i=1:length(glucose_uptake)
        
         
         if (i>1 ||  j>1)
+        %if (j>1)
             solConopt = tomRun('conopt',NLP,1);
-            yield_PDO(i,j) = solConopt.x_k(PDO_idx)/(glycerol_uptake(j)+glucose_uptake(i));
+            yield_PDO(i,j) = solConopt.x_k(PDO_idx)/(-solConopt.x_k(glucose_index)-solConopt.x_k(glycerol_index));
+            %yield_PDO(i,j) = solConopt.x_k(PDO_idx)/(-solConopt.x_k(glycerol_index));
             yield_PDO(1,1)=0;
             if (~contains(solConopt.ExitText,'Infeasible'))
             NLP.x_0 = solConopt.x_k;
@@ -232,12 +243,34 @@ end
 
 %% Plot
 [GLC,GLY] = meshgrid(glucose_uptake,glycerol_uptake);
-
+yield_PDO(yield_PDO>1)=1;
 surf(GLY,GLC,transpose(yield_PDO))
 title('Co-Fermentation yield of PDO')
 ylabel('Glucose Uptake Flux (mmol/gDW h)')
 xlabel('Glycerol Uptake Flux (mmol/gDW h)')
 zlabel({'$Y_(PDO/S)$'},'Interpreter','latex')
+
+%% Left plot
+
+Glu_Gly_ratio = GLC./GLY;
+Glu_Gly_ratio = Glu_Gly_ratio(2:end,:);
+Glu_Gly_ratio = reshape(Glu_Gly_ratio.',1,[]);
+yield_PDO_flattened = reshape((yield_PDO(2:end,:)).',1,[]);
+
+x_bins = [0,0.053,0.104,0.238,1.149];
+tol = [1e-3,5e-3,1e-2,5e-2,5e-2,1e-1];
+y_bins = zeros(1,length(x_bins));
+std_dev = zeros(1,length(x_bins));
+for i=1:length(x_bins)
+   y_vals = yield_PDO_flattened(abs(Glu_Gly_ratio-x_bins(i))<tol(i));
+   y_bins(i) = mean(y_vals);
+   std_dev(i) = std(y_vals);
+end
+figure 
+plot (x_bins,y_bins,'*')
+ylim([0 1.1])
+xlim([-0.1 1.2])
+errorbar(x_bins,y_bins,std_dev);
 
 
 
